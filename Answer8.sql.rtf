@@ -1,0 +1,51 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2759
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 WITH CountryMedians AS (\
+    SELECT\
+        country,\
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY daily_vaccinations) AS country_median\
+    FROM\
+        vaccination_table\
+    GROUP BY\
+        country\
+),\
+CountryNulls AS (\
+    SELECT\
+        country\
+    FROM\
+        vaccination_table\
+    WHERE\
+        daily_vaccinations IS NULL\
+),\
+CountryNullsWithMedians AS (\
+    SELECT\
+        cm.country,\
+        cm.country_median\
+    FROM\
+        CountryNulls AS cn\
+    JOIN\
+        CountryMedians AS cm ON cn.country = cm.country\
+),\
+AllCountries AS (\
+    SELECT DISTINCT\
+        country\
+    FROM\
+        vaccination_table\
+)\
+UPDATE\
+    vaccination_table AS vt\
+SET\
+    daily_vaccinations = COALESCE(cnsm.country_median, 0)\
+FROM\
+    AllCountries AS ac\
+LEFT JOIN\
+    CountryNullsWithMedians AS cnsm ON vt.country = cnsm.country\
+WHERE\
+    vt.country = ac.country\
+    AND vt.daily_vaccinations IS NULL;\
+}
